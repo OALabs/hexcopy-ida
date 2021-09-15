@@ -17,8 +17,8 @@
 __AUTHOR__ = '@herrcore'
 
 PLUGIN_NAME = "Hex Copy"
-PLUGIN_HOTKEY = ''
-VERSION = '3.0'
+PLUGIN_HOTKEY = 'Ctrl+H'
+VERSION = '3.0.0'
 
   
 import os
@@ -65,7 +65,7 @@ class hex_copy(idaapi.plugin_t):
     comment = "Copy Hex Bytes"
     help = "Highlight Assembly and right-click 'Copy Hex'"
     wanted_name = PLUGIN_NAME
-    wanted_hotkey = ""
+    wanted_hotkey = PLUGIN_HOTKEY
 
     #--------------------------------------------------------------------------
     # Plugin Overloads
@@ -144,8 +144,9 @@ class hex_copy(idaapi.plugin_t):
             self.ACTION_COPY_BYTES,                        # The action name.
             "Copy Hex",             # The action text.
             IDACtxEntry(copy_bytes),                # The action handler.
-            None,                                    # Optional: action shortcut
-            "Copy selected bytes as hex" # Optional: tooltip
+            PLUGIN_HOTKEY,                                    # Optional: action shortcut
+            "Copy selected bytes as hex", # Optional: tooltip
+            31 # Copy icon
         )
 
         # register the action with IDA
@@ -201,7 +202,7 @@ class Hooks(idaapi.UI_Hooks):
                 popup,
                 hex_copy.ACTION_COPY_BYTES,
                 "Copy Hex",
-                idaapi.SETMENU_APP
+                idaapi.SETMENU_APP,
             )
 
         # done
@@ -232,8 +233,6 @@ def inject_hex_copy_actions(form, popup, form_type):
             "Copy Hex",
             idaapi.SETMENU_APP
         )
-
-
 
     # done
     return 0
