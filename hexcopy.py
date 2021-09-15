@@ -18,7 +18,7 @@ __AUTHOR__ = '@herrcore'
 
 PLUGIN_NAME = "Hex Copy"
 PLUGIN_HOTKEY = 'Ctrl+H'
-VERSION = '3.0.0'
+VERSION = '3.1.0'
 
   
 import os
