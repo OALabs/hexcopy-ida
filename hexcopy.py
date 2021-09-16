@@ -22,7 +22,7 @@ VERSION = '3.1.0'
 
   
 import os
-
+import sys
 import idc
 import idaapi
 import idautils
@@ -138,16 +138,27 @@ class hex_copy(idaapi.plugin_t):
         """
         Register the copy bytes action with IDA.
         """
+        if (sys.version_info > (3, 0)):
+            # Describe the action using python3 copy
+            action_desc = idaapi.action_desc_t(
+                self.ACTION_COPY_BYTES,         # The action name.
+                "Copy Hex",                     # The action text.
+                IDACtxEntry(copy_bytes_py3),        # The action handler.
+                PLUGIN_HOTKEY,                  # Optional: action shortcut
+                "Copy selected bytes as hex",   # Optional: tooltip
+                31                              # Copy icon
+            )
+        else:
+            # Describe the action using python2 copy
+            action_desc = idaapi.action_desc_t(
+                self.ACTION_COPY_BYTES,         # The action name.
+                "Copy Hex",                     # The action text.
+                IDACtxEntry(copy_bytes_py2),        # The action handler.
+                PLUGIN_HOTKEY,                  # Optional: action shortcut
+                "Copy selected bytes as hex",   # Optional: tooltip
+                31                              # Copy icon
+            )
 
-        # describe the action
-        action_desc = idaapi.action_desc_t(
-            self.ACTION_COPY_BYTES,                        # The action name.
-            "Copy Hex",             # The action text.
-            IDACtxEntry(copy_bytes),                # The action handler.
-            PLUGIN_HOTKEY,                                    # Optional: action shortcut
-            "Copy selected bytes as hex", # Optional: tooltip
-            31 # Copy icon
-        )
 
         # register the action with IDA
         assert idaapi.register_action(action_desc), "Action registration failed"
@@ -241,8 +252,34 @@ def inject_hex_copy_actions(form, popup, form_type):
 # Byte copy 
 #------------------------------------------------------------------------------
 
+def copy_bytes_py2():
+    """
+    Copy selected bytes to clipboard
+    """
+    if using_ida7api:
+        start = idc.read_selection_start()
+        end = idc.read_selection_end()
+        if idaapi.BADADDR in (start, end):
+            ea = idc.here()
+            start = idaapi.get_item_head(ea)
+            end = idaapi.get_item_end(ea)
+        data = idc.get_bytes(start, end - start).encode('hex')
+        print("Bytes copied: %s" % data)
+        copy_to_clip(data)
+    else:
+        start = idc.SelStart()
+        end = idc.SelEnd()
+        if idaapi.BADADDR in (start, end):
+            ea = idc.here()
+            start = idaapi.get_item_head(ea)
+            end = idaapi.get_item_end(ea)
+        data = idc.GetManyBytes(start, end-start).encode('hex')
+        print("Bytes copied: %s" % data)
+        copy_to_clip(data)
+    return 
 
-def copy_bytes():
+
+def copy_bytes_py3():
     """
     Copy selected bytes to clipboard
     """
