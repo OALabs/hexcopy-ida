@@ -2,6 +2,8 @@
 <img src="https://user-images.githubusercontent.com/5906222/133528855-0e73fb1e-e77d-4f50-ab10-7efbe8586d01.gif" height="400">
 </p>
 
+[![GitHub release](https://img.shields.io/github/v/release/oalabs/hexcopy-ida.svg)](https://github.com/OALabs/hexcopy-ida/releases) [![Chat](https://img.shields.io/badge/chat-Discord-blueviolet)](https://discord.gg/cw4U3WHvpn) 
+
 # HexCopy
 IDA plugin for quickly copying disassembly as encoded hex bytes. This whole plugin just saves you two extra clicks... but if you are frequently copying data from IDA into external tools and scripts this is a must have! 
 
