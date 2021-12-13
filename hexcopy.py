@@ -132,7 +132,8 @@ class hex_copy(idaapi.plugin_t):
     #--------------------------------------------------------------------------
 
     ACTION_COPY_BYTES  = "prefix:copy_bytes"
-
+    ACTION_COPY_BYTES_AS_C_ARRAY  = "prefix:copy_bytes_as_C_array"
+    ACTION_COPY_BYTES_AS_PY_ARRAY  = "prefix:copy_bytes_as_Py_array"
 
     def _init_action_copy_bytes(self):
         """
@@ -140,7 +141,7 @@ class hex_copy(idaapi.plugin_t):
         """
         if (sys.version_info > (3, 0)):
             # Describe the action using python3 copy
-            action_desc = idaapi.action_desc_t(
+            action_desc_1 = idaapi.action_desc_t(
                 self.ACTION_COPY_BYTES,         # The action name.
                 "Copy Hex",                     # The action text.
                 IDACtxEntry(copy_bytes_py3),        # The action handler.
@@ -148,9 +149,28 @@ class hex_copy(idaapi.plugin_t):
                 "Copy selected bytes as hex",   # Optional: tooltip
                 31                              # Copy icon
             )
+            
+            action_desc_2 = idaapi.action_desc_t(
+                self.ACTION_COPY_BYTES_AS_C_ARRAY,      # The action name.
+                "Copy Hex C Array",                     # The action text.
+                IDACtxEntry(copy_bytes_c_array_py3),    # The action handler.
+                '',                                      # Optional: action shortcut
+                "Copy selected bytes as C hex array",   # Optional: tooltip
+                31                                      # Copy icon
+            )
+            
+            action_desc_3 = idaapi.action_desc_t(
+                self.ACTION_COPY_BYTES_AS_PY_ARRAY,      # The action name.
+                "Copy Hex Py Array",                     # The action text.
+                IDACtxEntry(copy_bytes_py_array_py3),    # The action handler.
+                '',                                      # Optional: action shortcut
+                "Copy selected bytes as Python hex array",   # Optional: tooltip
+                31                                      # Copy icon
+            )
+            
         else:
             # Describe the action using python2 copy
-            action_desc = idaapi.action_desc_t(
+            action_desc_1 = idaapi.action_desc_t(
                 self.ACTION_COPY_BYTES,         # The action name.
                 "Copy Hex",                     # The action text.
                 IDACtxEntry(copy_bytes_py2),        # The action handler.
@@ -158,10 +178,29 @@ class hex_copy(idaapi.plugin_t):
                 "Copy selected bytes as hex",   # Optional: tooltip
                 31                              # Copy icon
             )
-
+            
+            action_desc_2 = idaapi.action_desc_t(
+                self.ACTION_COPY_BYTES_AS_C_ARRAY,      # The action name.
+                "Copy Hex C Array",                     # The action text.
+                IDACtxEntry(copy_bytes_c_array_py2),    # The action handler.
+                '',                                      # Optional: action shortcut
+                "Copy selected bytes as C hex array",   # Optional: tooltip
+                31                                      # Copy icon
+            )
+            
+            action_desc_3 = idaapi.action_desc_t(
+                self.ACTION_COPY_BYTES_AS_PY_ARRAY,      # The action name.
+                "Copy Hex Py Array",                     # The action text.
+                IDACtxEntry(copy_bytes_py_array_py2),    # The action handler.
+                '',                                      # Optional: action shortcut
+                "Copy selected bytes as Python hex array",   # Optional: tooltip
+                31                                      # Copy icon
+            )
 
         # register the action with IDA
-        assert idaapi.register_action(action_desc), "Action registration failed"
+        assert idaapi.register_action(action_desc_1), "Action registration failed"
+        assert idaapi.register_action(action_desc_2), "Action registration failed"
+        assert idaapi.register_action(action_desc_3), "Action registration failed"
 
 
     def _del_action_copy_bytes(self):
@@ -169,6 +208,8 @@ class hex_copy(idaapi.plugin_t):
         Delete the bulk prefix action from IDA.
         """
         idaapi.unregister_action(self.ACTION_COPY_BYTES)
+        idaapi.unregister_action(self.ACTION_COPY_BYTES_AS_C_ARRAY)
+        idaapi.unregister_action(self.ACTION_COPY_BYTES_AS_PY_ARRAY)
 
 
 
@@ -215,6 +256,22 @@ class Hooks(idaapi.UI_Hooks):
                 "Copy Hex",
                 idaapi.SETMENU_APP,
             )
+            
+            idaapi.attach_action_to_popup(
+                form,
+                popup,
+                hex_copy.ACTION_COPY_BYTES_AS_C_ARRAY,
+                "Copy Hex C Array",
+                idaapi.SETMENU_APP,
+            )
+            
+            idaapi.attach_action_to_popup(
+                form,
+                popup,
+                hex_copy.ACTION_COPY_BYTES_AS_PY_ARRAY,
+                "Copy Hex Py Array",
+                idaapi.SETMENU_APP,
+            )
 
         # done
         return 0
@@ -242,6 +299,22 @@ def inject_hex_copy_actions(form, popup, form_type):
             popup,
             hex_copy.ACTION_COPY_BYTES,
             "Copy Hex",
+            idaapi.SETMENU_APP
+        )
+        
+        idaapi.attach_action_to_popup(
+            form,
+            popup,
+            hex_copy.ACTION_COPY_BYTES_AS_C_ARRAY,
+            "Copy Hex C Array",
+            idaapi.SETMENU_APP
+        )
+        
+        idaapi.attach_action_to_popup(
+            form,
+            popup,
+            hex_copy.ACTION_COPY_BYTES_AS_PY_ARRAY,
+            "Copy Hex Py Array",
             idaapi.SETMENU_APP
         )
 
@@ -307,6 +380,219 @@ def copy_bytes_py3():
         copy_to_clip(data)
     return 
 
+#------------------------------------------------------------------------------
+# Byte copy as C array
+#------------------------------------------------------------------------------
+
+def copy_bytes_c_array_py2():
+    """
+    Copy selected bytes to clipboard
+    """
+    if using_ida7api:
+        start = idc.read_selection_start()
+        end = idc.read_selection_end()
+        if idaapi.BADADDR in (start, end):
+            ea = idc.here()
+            start = idaapi.get_item_head(ea)
+            end = idaapi.get_item_end(ea)
+        data = idc.get_bytes(start, end - start).encode('hex')
+        
+        array = "{"
+        for i in range(1, len(data), 2):
+            array += "0x"
+            array += data[i - 1]
+            array += data[i]
+            array += ", "
+        array = array[:-2]
+        array += "}"
+
+        if (len(data) % 2) != 0:
+            print("Didn't include last number '%s' because had odd number of bytes?" %data[-1])
+        
+        print("Bytes copied as C array: %s" % array)
+        copy_to_clip(array)
+    else:
+        start = idc.SelStart()
+        end = idc.SelEnd()
+        if idaapi.BADADDR in (start, end):
+            ea = idc.here()
+            start = idaapi.get_item_head(ea)
+            end = idaapi.get_item_end(ea)
+        data = idc.GetManyBytes(start, end-start).encode('hex')
+        
+        array = "{"
+        for i in range(1, len(data), 2):
+            array += "0x"
+            array += data[i - 1]
+            array += data[i]
+            array += ", "
+        array = array[:-2]
+        array += "}"
+
+        if (len(data) % 2) != 0:
+            print("Didn't include last number '%s' because had odd number of bytes?" %data[-1])
+        
+        print("Bytes copied as C array: %s" % array)
+        copy_to_clip(array)
+    return 
+
+
+def copy_bytes_c_array_py3():
+    """
+    Copy selected bytes to clipboard
+    """
+    if using_ida7api:
+        start = idc.read_selection_start()
+        end = idc.read_selection_end()
+        if idaapi.BADADDR in (start, end):
+            ea = idc.here()
+            start = idaapi.get_item_head(ea)
+            end = idaapi.get_item_end(ea)
+        # fix encode bug reference 
+        # https://stackoverflow.com/questions/6624453/whats-the-correct-way-to-convert-bytes-to-a-hex-string-in-python-3
+        data = idc.get_bytes(start, end - start).hex()
+        
+        array = "{"
+        for i in range(1, len(data), 2):
+            array += "0x"
+            array += data[i - 1]
+            array += data[i]
+            array += ", "
+        array = array[:-2]
+        array += "}"
+
+        if (len(data) % 2) != 0:
+            print("Didn't include last number '%s' because had odd number of bytes?" %data[-1])
+        
+        print("Bytes copied as C array: %s" % array)
+        copy_to_clip(array)
+    else:
+        start = idc.SelStart()
+        end = idc.SelEnd()
+        if idaapi.BADADDR in (start, end):
+            ea = idc.here()
+            start = idaapi.get_item_head(ea)
+            end = idaapi.get_item_end(ea)
+        data = idc.GetManyBytes(start, end-start).hex()
+        
+        array = "{"
+        for i in range(1, len(data), 2):
+            array += "0x"
+            array += data[i - 1]
+            array += data[i]
+            array += ", "
+        array = array[:-2]
+        array += "}"
+
+        if (len(data) % 2) != 0:
+            print("Didn't include last number '%s' because had odd number of bytes?" %data[-1])
+        
+        print("Bytes copied as C array: %s" % array)
+        copy_to_clip(array)
+    return 
+
+#------------------------------------------------------------------------------
+# Byte copy as Py3 array
+#------------------------------------------------------------------------------
+
+def copy_bytes_py_array_py2():
+    """
+    Copy selected bytes to clipboard
+    """
+    if using_ida7api:
+        start = idc.read_selection_start()
+        end = idc.read_selection_end()
+        if idaapi.BADADDR in (start, end):
+            ea = idc.here()
+            start = idaapi.get_item_head(ea)
+            end = idaapi.get_item_end(ea)
+        data = idc.get_bytes(start, end - start).encode('hex')
+        
+        array = "b'"
+        for i in range(1, len(data), 2):
+            array += "\\x"
+            array += data[i - 1]
+            array += data[i]
+        array += "'"
+
+        if (len(data) % 2) != 0:
+            print("Didn't include last number '%s' because had odd number of bytes?" %data[-1])
+
+        print("Bytes copied as Python array: %s" % array)
+        copy_to_clip(array)
+    else:
+        start = idc.SelStart()
+        end = idc.SelEnd()
+        if idaapi.BADADDR in (start, end):
+            ea = idc.here()
+            start = idaapi.get_item_head(ea)
+            end = idaapi.get_item_end(ea)
+        data = idc.GetManyBytes(start, end-start).encode('hex')
+        
+        array = "b'"
+        for i in range(1, len(data), 2):
+            array += "\\x"
+            array += data[i - 1]
+            array += data[i]
+        array += "'"
+
+        if (len(data) % 2) != 0:
+            print("Didn't include last number '%s' because had odd number of bytes?" %data[-1])
+
+        print("Bytes copied as Python array: %s" % array)
+        copy_to_clip(array)
+    return 
+
+
+def copy_bytes_py_array_py3():
+    """
+    Copy selected bytes to clipboard
+    """
+    if using_ida7api:
+        start = idc.read_selection_start()
+        end = idc.read_selection_end()
+        if idaapi.BADADDR in (start, end):
+            ea = idc.here()
+            start = idaapi.get_item_head(ea)
+            end = idaapi.get_item_end(ea)
+        # fix encode bug reference 
+        # https://stackoverflow.com/questions/6624453/whats-the-correct-way-to-convert-bytes-to-a-hex-string-in-python-3
+        data = idc.get_bytes(start, end - start).hex()
+        
+        array = "b'"
+        for i in range(1, len(data), 2):
+            array += "\\x"
+            array += data[i - 1]
+            array += data[i]
+        array += "'"
+
+        if (len(data) % 2) != 0:
+            print("Didn't include last number '%s' because had odd number of bytes?" %data[-1])
+
+        print("Bytes copied as Python array: %s" % array)
+        copy_to_clip(array)
+    else:
+        start = idc.SelStart()
+        end = idc.SelEnd()
+        if idaapi.BADADDR in (start, end):
+            ea = idc.here()
+            start = idaapi.get_item_head(ea)
+            end = idaapi.get_item_end(ea)
+        data = idc.GetManyBytes(start, end-start).hex()
+        
+        array = "b'"
+        for i in range(1, len(data), 2):
+            array += "\\x"
+            array += data[i - 1]
+            array += data[i]
+        array += "'"
+
+        if (len(data) % 2) != 0:
+            print("Didn't include last number '%s' because had odd number of bytes?" %data[-1])
+
+        print("Bytes copied as Python array: %s" % array)
+        copy_to_clip(array)
+    return 
 
 #------------------------------------------------------------------------------
 # IDA ctxt
