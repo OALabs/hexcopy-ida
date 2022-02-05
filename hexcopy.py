@@ -292,7 +292,7 @@ def copy_bytes_py3():
             end = idaapi.get_item_end(ea)
         # fix encode bug reference 
         # https://stackoverflow.com/questions/6624453/whats-the-correct-way-to-convert-bytes-to-a-hex-string-in-python-3
-        data = idc.get_bytes(start, end - start).hex()
+        data = idc.get_bytes(start, end - start).hex(' ')
         print ("Bytes copied: %s" % data)
         copy_to_clip(data)
     else:
